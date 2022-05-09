@@ -42,26 +42,23 @@ A= np.array([[0.0, 1.0],
 b= np.array([[0.0],
              [1.0]])
 
-sim_length= int(T/dt)+2 # +2 for t=0 and t=-1. Both time steps are required in order to be able to apply central
-# differences to solve the ODE.
+sim_length= int(T/dt)+1 # +1 for t=0 and simulation end
 
 X= np.zeros((2,sim_length)) # X is the state space for each time step. First row is driven distance, second row is v.
 
-# initialize state space under the assumption, that there was no acceleration in between the first two simulation steps
-X[0,0]= -v0*dt
+# initialize state space
+X[0,0]= 0
 X[1,0]= v0
-X[0,1]= 0
-X[1,1]= v0
 
 # %% 2) defining system input
 
 u= np.zeros((1,sim_length))
-# u[0,1:]= 4
+u[0,:]= 4.5
 
 # %% 3) simulation
 
-for t in range(1,sim_length-1):
-    X[:,[t+1]]= (A@X[:,[t]] +b*u[0,t]) *2*dt + X[:,[t-1]]
+for t in range(0,sim_length-1):
+    X[:,[t+1]]= (A@X[:,[t]] +b*u[0,t]) *dt + X[:,[t]]
 
 
 # %% 4) evaluation - does it make sense? 
