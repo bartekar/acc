@@ -273,7 +273,7 @@ def simulate(ctrl_fun):
         X[:2,[t+1]]= (A@X[:2,[t]] +b*u[0,t]) *dt + X[:2,[t]]
         X[2:,[t+1]]= (A@X[2:,[t]] +b*u[1,t]) *dt + X[2:,[t]]
     
-    reward= calc_kpi_crash(X[0,:], X[2,:]) + calc_kpi_distance(X[0,:], X[2,:], X[3,:])
+    reward= 99*calc_kpi_crash(X[0,:], X[2,:]) + calc_kpi_distance(X[0,:], X[2,:], X[3,:])
     return reward
 
 
@@ -283,10 +283,74 @@ reward= simulate(ctrl_fun)
 
 print(np.sum(reward))
 
-# %%
+# %% 8) optimizing using evolutionary algorithms
+
+def evo_search(num_generations= 20, desired_improvement_rate=0.2):
+    # final_mutation_rate = decay**num_gen
+    # log10(fin_mutate) = log10(decay) * num_gen
+    # log10(fin_mutate)/ num_gen = log10(decay)
+    decay= np.exp( np.log(0.01)/ num_generations )
+    pop_size=20
+    num_parents= 4
+    num_children= pop_size//num_parents -1
+    
+    mutation_rate= 1.0
+    
+    kpi_stats= {'best':[], 'mean':[], 'std':[]}
+    
+    pop= []
+    for k in range(pop_size):
+        pop.append( {'ctrl': create_evo_controller(magnitude=1.0), 'my_fitness': np.inf, 'parent_fitness': np.inf} )
+    
+    for k in range(num_generations):
+        # evaluate fitness
+        for l in range(pop_size):
+            ctrl= pop[l]['ctrl']
+            fitness= simulate( lambda x: apply_evo_controller(x, ctrl) )
+            pop[l]['my_fitness']= np.sum( fitness )
+        
+        # select sort according to fitness (smallest fitness is first element)
+        pop.sort(key= lambda x: x['my_fitness'])
+        
+        # save status for later evaluation
+        gen_fitness= [x['my_fitness'] for x in pop]
+        kpi_stats['best'].append(gen_fitness[0])
+        kpi_stats['mean'].append( np.mean(gen_fitness) )
+        kpi_stats['std'].append( np.std(gen_fitness) )
+        
+        # adapt mutation rate
+        if k > 1:
+            # how many instances behaved better then their parent?
+            num_better= 0
+            for p in pop:
+                if p['my_fitness'] < p['parent_fitness']:
+                    num_better+= 1
+            improvement_rate= num_better/pop_size
+            if improvement_rate > desired_improvement_rate:
+                mutation_rate/= decay
+            else:
+                mutation_rate*= decay
+        
+        # generate new population
+        new_pop= []
+        for l in range(num_parents):
+            # create a "clone" of the parent
+            child= {'ctrl': pop[l]['ctrl']}
+            child['parent_fitness']= pop[l]['my_fitness']
+            child['my_fitness']= pop[l]['my_fitness']
+            new_pop.append(child)
+            for m in range(num_children):
+                child= {'ctrl': pop[l]['ctrl'] + create_evo_controller(mutation_rate) }
+                child['parent_fitness']= pop[l]['my_fitness']
+                child['my_fitness']= np.inf
+                new_pop.append(child)
+        pop= new_pop
+    return kpi_stats
+        
+
+kpi_stats= evo_search(num_generations=20)
 
 # todos:
-    # evolutionary algorithms
     # reinforcement learning
     # braking VS driving backwards
 
@@ -299,6 +363,7 @@ print(np.sum(reward))
 # problematisches ueberschreiben der falschen zahlen
 # reproduzierbarkeit
 # wahl der hyper-parameter?
+# initial conditions, hyperparameters, ...
 
 
 
