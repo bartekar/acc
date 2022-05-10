@@ -119,6 +119,17 @@ def calc_kpi_crash(s_leader, s_follower):
 # plt.plot(calc_kpi_crash(X[0,:], X[2,:]))
 
 
+def calc_safety_dist(v):
+    v= np.abs(v) # todo: DO THIS RIGHT
+    if v > 0:
+        min_dist= 1 # 1m
+        safety_dist= v*1.8 # *3.6 -> km/h, dann halber tachoabstand
+        safety_dist+= min_dist
+        return safety_dist
+    else:
+        raise Exception('safety-distance for neg velocity is undefined')
+        
+
 #   A kpi
 #   |
 # 1 *
@@ -129,7 +140,7 @@ def calc_kpi_crash(s_leader, s_follower):
 # 0 +---------*--*--*--------- > distance between vehicles
 #   0         d_s   d_i
 # 
-# safety distance is defined as d_s = v*3.6/2.0
+# safety distance is defined as d_s = v*3.6/2.0 +eps
 # ignorance window is the range from d_S to d_i= (1+i_win)*d_s
 # from i on there is another penalty, that increases with higher distance
 # 
@@ -137,7 +148,7 @@ def calc_kpi_distance(s_leader, s_follower, v_follower, ignorance_win=0.3, penal
     kpi= np.zeros_like(s_leader)
     dist_vehicles= s_leader - s_follower
     for k in range(0, s_leader.shape[0]):
-        safety_dist= v_follower[k]*3.6/2.0
+        safety_dist= calc_safety_dist( v_follower[k] )
         ignore_dist= (1+ignorance_win) * safety_dist
         
         if dist_vehicles[k] > ignore_dist:    # right of the diagram
@@ -177,7 +188,7 @@ def calc_kpi_jerk(a, dt, j_dangerous):
     # output of the controller is a float representing the acceleration in the range -4.5 to 4.5
 
 def __dist_2_idx__(d, v, i_win=0.3):
-    safety_dist= v*3.6/2.0
+    safety_dist= calc_safety_dist(v)
     ignore_dist= (1+i_win)* safety_dist
     if d < 0.0:
         return 0
