@@ -236,7 +236,7 @@ def create_dummy_controller():
        # v_follower  -inf  0   5    10   15   20   25   30   35   inf
     return np.array([[ 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5],  # in front of leading
                      [-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5],  # critical behind leading
-                     [ 4.5, 4.5, 2.5, 2.5, 2.5, 2.5, 0.5,-0.5,-2.5],  # approaching leading
+                     [ 4.5, 4.5, 2.5, 0.5, 0.5, 0.5, 0.5,-0.5,-2.5],  # approaching leading
                      [ 4.5, 4.5, 4.5, 4.5, 4.5, 2.5, 2.5, 0.5, 0.5],  # inside ignore-win, first half
                      [ 4.5, 4.5, 4.5, 4.5, 2.5, 2.5, 2.5, 2.5, 2.5],  # inside ignore-win, second half
                      [ 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 2.5, 2.5, 2.5],  # a little behind
@@ -261,12 +261,18 @@ def simulate(ctrl_fun):
         u[1,:]= ctrl_fun(X[:,t])
         X[:2,[t+1]]= (A@X[:2,[t]] +b*u[0,t]) *dt + X[:2,[t]]
         X[2:,[t+1]]= (A@X[2:,[t]] +b*u[1,t]) *dt + X[2:,[t]]
+    
+    reward= calc_kpi_crash(X[0,:], X[2,:]) + calc_kpi_distance(X[0,:], X[2,:], X[3,:])
+    return reward
 
 
 ctrl= create_dummy_controller()
 ctrl_fun= lambda x: apply_evo_controller(x, ctrl)
-simulate(ctrl_fun)
+reward= simulate(ctrl_fun)
 
+print(np.sum(reward))
+
+# %%
 
 # todos:
     # evolutionary algorithms
