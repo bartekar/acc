@@ -200,7 +200,7 @@ def __velo_2_idx__(v):
     elif v > 35:
         return 8
     else:
-        return v//5 +1
+        return int(v)//5 +1
 
 def create_evo_controller(magnitude=1.0):
     return np.random.randn(7,9) *magnitude
