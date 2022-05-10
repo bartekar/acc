@@ -167,17 +167,97 @@ def calc_kpi_jerk(a, dt, j_dangerous):
 # plt.plot(calc_kpi_jerk(u[1,:], dt, j_dangerous=4.5))
 
 
+# %% 6) controller design through look-up-tables
+
+# input: 
+    # consider distances discretized like this: -inf < 0 < 0.5 < d_s < d_s/2+d_i/2 < d_i < d_i*1.5 < inf -> dim=7
+    # assume v-leader = const -> ignore
+    # divide velocity into intervals of length 5: -inf < 0 < 5 < 10 < 15 < ... < 35 < inf -> dim=9
+# output:
+    # output of the controller is a float representing the acceleration in the range -4.5 to 4.5
+
+def __dist_2_idx__(d, v, i_win=0.3):
+    safety_dist= 2*v
+    ignore_dist= (1+i_win)* safety_dist
+    if d < 0.0:
+        return 0
+    elif d < 0.5*safety_dist:
+        return 1
+    elif d < safety_dist:
+        return 2
+    elif d < (safety_dist+ignore_dist)/2.0:
+        return 3
+    elif d < ignore_dist:
+        return 4
+    elif d < ignore_dist*1.5:
+        return 5
+    else:
+        return 6
+
+def __velo_2_idx__(v):
+    if v < 0.0:
+        return 0
+    elif v > 35:
+        return 8
+    else:
+        return v//5 +1
+
+def create_evo_controller(magnitude=1.0):
+    return np.random.randn(7,9) *magnitude
+
+def apply_evo_controller(x, controller):
+    dist= x[0]-x[2]
+    idx_dist= __dist_2_idx__(dist, x[3])
+    idx_velo= __velo_2_idx__(x[3])
+    return controller[idx_dist, idx_velo]
+
+
+# input: 
+    # same as above
+# output:
+    # output of the controller is the expected value of using one of the following accelerations:
+    # -4.5, -2.0, -0.5, 0.0, 0.5, 2.0, 4.5 -> dim=7
+
+def __idx_2_accel__(idx):
+    accel= [-4.5, -2.0, -0.5, 0.0, 0.5, 2.0, 4.5]
+    return accel[idx]
+
+def create_rl_controller(bias=0.0):
+    return np.zeros(7,9,7) +bias, np.zeros(7,9,7)
+
+def apply_rl_controller(state, controller, eps):
+    pass
+
+def adjust_rl_controller(states, value, controller):
+    pass
+
+
+def create_dummy_controller():
+       # v_follower  -inf  0   5    10   15   20   25   30   35   inf
+    return np.array([[ 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5],  # in front of leading
+                     [-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5,-4.5],  # critical behind leading
+                     [ 4.5, 4.5, 2.5, 2.5, 2.5, 2.5, 0.5,-0.5,-2.5],  # approaching leading
+                     [ 4.5, 4.5, 4.5, 4.5, 4.5, 2.5, 2.5, 0.5, 0.5],  # inside ignore-win, first half
+                     [ 4.5, 4.5, 4.5, 4.5, 2.5, 2.5, 2.5, 2.5, 2.5],  # inside ignore-win, second half
+                     [ 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 2.5, 2.5, 2.5],  # a little behind
+                     [ 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5]]) # far behind
+
 # todos:
     # self tuned PID controller for single v0
     # implement control through state
     # evolutionary algorithms
     # reinforcement learning
+    # braking VS driving backwards
 
 
 
 
-
-
+# bias problem
+# lern geschwindigkeit
+# value VS optimal move
+# problematisches ueberschreiben der falschen zahlen
+# reproduzierbarkeit
+# wahl der hyper-parameter?
 
 
 
