@@ -269,7 +269,7 @@ def simulate(ctrl_fun):
     # acceleration for follower stays zero and is changed during simulation
 
     for t in range(0,sim_length-1):
-        u[1,:]= ctrl_fun(X[:,t])
+        u[1,t]= ctrl_fun(X[:,t])
         X[:2,[t+1]]= (A@X[:2,[t]] +b*u[0,t]) *dt + X[:2,[t]]
         X[2:,[t+1]]= (A@X[2:,[t]] +b*u[1,t]) *dt + X[2:,[t]]
     
@@ -345,10 +345,10 @@ def evo_search(num_generations= 20, desired_improvement_rate=0.2):
                 child['my_fitness']= np.inf
                 new_pop.append(child)
         pop= new_pop
-    return kpi_stats
-        
+    return kpi_stats, pop[0]['ctrl']
 
-kpi_stats= evo_search(num_generations=20)
+
+kpi_stats, best_ctrl= evo_search(num_generations=20)
 
 # todos:
     # reinforcement learning
