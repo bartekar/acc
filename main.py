@@ -242,9 +242,33 @@ def create_dummy_controller():
                      [ 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 2.5, 2.5, 2.5],  # a little behind
                      [ 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5]]) # far behind
 
+
+
+# %% 7) Testing a controller
+
+def simulate(ctrl_fun):
+    # initialize state space
+    X[0,0]= dist0
+    X[1,0]= v0
+    X[2,0]= 0
+    X[3,0]= v1
+
+    u= np.zeros((2,sim_length))
+    u[0,:]= v0*r # acceleration for leading. This value is set such that the velocity does not change (terminal velocity)
+    # acceleration for follower stays zero and is changed during simulation
+
+    for t in range(0,sim_length-1):
+        u[1,:]= ctrl_fun(X[:,t])
+        X[:2,[t+1]]= (A@X[:2,[t]] +b*u[0,t]) *dt + X[:2,[t]]
+        X[2:,[t+1]]= (A@X[2:,[t]] +b*u[1,t]) *dt + X[2:,[t]]
+
+
+ctrl= create_dummy_controller()
+ctrl_fun= lambda x: apply_evo_controller(x, ctrl)
+simulate(ctrl_fun)
+
+
 # todos:
-    # self tuned PID controller for single v0
-    # implement control through state
     # evolutionary algorithms
     # reinforcement learning
     # braking VS driving backwards
