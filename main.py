@@ -303,6 +303,7 @@ def evo_search(num_generations= 20, desired_improvement_rate=0.2):
         pop.append( {'ctrl': create_evo_controller(magnitude=1.0), 'my_fitness': np.inf, 'parent_fitness': np.inf} )
     
     for k in range(num_generations):
+        print('gen', k, 'of', num_generations)
         # evaluate fitness
         for l in range(pop_size):
             ctrl= pop[l]['ctrl']
@@ -340,7 +341,10 @@ def evo_search(num_generations= 20, desired_improvement_rate=0.2):
             child['my_fitness']= pop[l]['my_fitness']
             new_pop.append(child)
             for m in range(num_children):
-                child= {'ctrl': pop[l]['ctrl'] + create_evo_controller(mutation_rate) }
+                ctrl= pop[l]['ctrl'] + create_evo_controller(mutation_rate)
+                ctrl[np.where(ctrl >  4.5)] =  4.5
+                ctrl[np.where(ctrl < -4.5)] = -4.5
+                child= {'ctrl': ctrl }
                 child['parent_fitness']= pop[l]['my_fitness']
                 child['my_fitness']= np.inf
                 new_pop.append(child)
@@ -354,7 +358,9 @@ kpi_stats, best_ctrl= evo_search(num_generations=20)
     # reinforcement learning
     # braking VS driving backwards
 
-
+# bugs:
+    # negative velocities -> safety-distance
+    # very high accelerations (1.5g)
 
 
 # bias problem
