@@ -289,7 +289,7 @@ def create_dummy_controller():
 
 # %% 7) Testing a controller
 
-def simulate(ctrl_fun):
+def simulate(ctrl_fun, trigger_period=1):
     # initialize state space
     X[0,0]= dist0
     X[1,0]= v0
@@ -301,17 +301,21 @@ def simulate(ctrl_fun):
     # acceleration for follower stays zero and is changed during simulation
 
     for t in range(0,sim_length-1):
-        u[1,t]= ctrl_fun(X[:,t])
+        if t%trigger_period == 0:
+            u[1,t]= ctrl_fun(X[:,t])
+        else:
+            u[1,t]= u[1,t-1]
         X[:2,[t+1]]= (A@X[:2,[t]] +b*u[0,t]) *dt + X[:2,[t]]
         X[2:,[t+1]]= (A@X[2:,[t]] +b*u[1,t]) *dt + X[2:,[t]]
     
     reward= 99*calc_kpi_crash(X[0,:], X[2,:]) + calc_kpi_distance(X[0,:], X[2,:], X[3,:])
-    return reward
+    return reward, u[1,:]
 
 
-ctrl= create_dummy_controller()
-ctrl_fun= lambda x: apply_evo_controller(x, ctrl)
-reward= simulate(ctrl_fun)
+# ctrl= create_dummy_controller()
+# ctrl_fun= lambda x: apply_evo_controller(x, ctrl)
+ctrl_fun= lambda x: apply_rl_controller(x, ctrl, 0.0)
+reward, _= simulate(ctrl_fun, trigger_period=1)
 
 print(np.sum(reward))
 
@@ -339,7 +343,7 @@ def evo_search(num_generations= 20, desired_improvement_rate=0.2):
         # evaluate fitness
         for l in range(pop_size):
             ctrl= pop[l]['ctrl']
-            fitness= simulate( lambda x: apply_evo_controller(x, ctrl) )
+            fitness, _= simulate( lambda x: apply_evo_controller(x, ctrl) )
             pop[l]['my_fitness']= np.sum( fitness )
         
         # select sort according to fitness (smallest fitness is first element)
@@ -386,6 +390,61 @@ def evo_search(num_generations= 20, desired_improvement_rate=0.2):
 
 kpi_stats, best_ctrl= evo_search(num_generations=20)
 
+# %% 9) optimizing using reinforcement learning
+
+def rl_search(num_runs=2):
+    trigger_period= 4
+    trigger_length= int( trigger_period/dt )
+    
+    num_runs= 1100
+    prob_decay= 0.01
+    prob_decay_time= 10
+    prob_exploration= 1.0 + prob_decay
+    
+    gamma= np.exp( np.log(0.1)/ 3 )
+    
+    kpi_stats= []
+    
+    def kpi_2_value(kpi):
+        values= np.zeros_like(kpi)
+        values[-1]= kpi[-1]
+        for k in range(len(values)-2,-1,-1):
+            values[k]= kpi[k] + gamma*values[k+1]
+        return values
+    
+    ctrl= create_rl_controller()
+    
+    for k in range(num_runs):
+        if (k % prob_decay_time) == 0:
+            prob_exploration-= prob_decay
+            print('Run number', k, 'of', num_runs)
+        ctrl_fun= lambda x: apply_rl_controller(x, ctrl, prob_exploration)
+        reward, actions= simulate(ctrl_fun, trigger_period=trigger_length)
+    
+        # remember kpis to compare training
+        kpi_stats.append(np.sum(reward))    
+    
+        # use only true actions to do learning
+        actions= actions[0:-1]
+        actions= actions[::trigger_length]
+        reward= reward[0:-1]
+        reward= reward.reshape((-1,trigger_length))
+        reward= np.sum( reward, axis=1 ) /trigger_length
+        
+        values= kpi_2_value(reward)
+        
+        # update controller
+        for l in range( len(actions) ):
+            adjust_rl_controller( X[:,l*trigger_length], actions[l], values[l], ctrl )
+    
+    return kpi_stats, ctrl
+
+kpi_stats, ctrl= rl_search()
+plt.clf()
+plt.plot(kpi_stats)
+plt.grid()
+print(kpi_stats[-1])
+
 # todos:
     # reinforcement learning
     # braking VS driving backwards
@@ -403,5 +462,15 @@ kpi_stats, best_ctrl= evo_search(num_generations=20)
 # wahl der hyper-parameter?
 # initial conditions, hyperparameters, ...
 
-
+# more diverce acceleration for RL
+# discretize evo result
+# make it robust
+# different velocity for leading vehicle
+# reproducability (train several times)
+# python trainign speed -> profiling -> optimize for speed
+# learning speed for more complex LUTs
+# starting from standstill
+# not driving backwards...
+# dynamic behavior of leading vehicle
+# jerk penalty
 
