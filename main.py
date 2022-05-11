@@ -121,7 +121,7 @@ def calc_kpi_crash(s_leader, s_follower):
 
 def calc_safety_dist(v):
     v= np.abs(v) # todo: DO THIS RIGHT
-    if v > 0:
+    if v >= 0:
         min_dist= 1 # 1m
         safety_dist= v*1.8 # *3.6 -> km/h, dann halber tachoabstand
         safety_dist+= min_dist
@@ -229,18 +229,49 @@ def apply_evo_controller(x, controller):
     # output of the controller is the expected value of using one of the following accelerations:
     # -4.5, -2.0, -0.5, 0.0, 0.5, 2.0, 4.5 -> dim=7
 
-def __idx_2_accel__(idx):
+def __idx_2_action__(idx):
     accel= [-4.5, -2.0, -0.5, 0.0, 0.5, 2.0, 4.5]
     return accel[idx]
 
-def create_rl_controller(bias=0.0):
-    return np.zeros(7,9,7) +bias, np.zeros(7,9,7)
+def __action_2_idx__(action):
+    if action < -3.25:
+        return 0
+    elif action < -1.25:
+        return 1
+    elif action < -0.25:
+        return 2
+    elif action <  0.25:
+        return 3
+    elif action <  1.25:
+        return 4
+    elif action < 3.25:
+        return 5
+    else:
+        return 6
 
-def apply_rl_controller(state, controller, eps):
-    pass
+def create_rl_controller(bias= 0.0):
+    return np.zeros((7,9,7)) +bias
 
-def adjust_rl_controller(states, value, controller):
-    pass
+# epsilon greedy
+def apply_rl_controller(x, controller, eps):
+    if np.random.rand(1)[0] > eps:
+        dist= x[0]-x[2]
+        idx_dist= __dist_2_idx__(dist, x[3])
+        idx_velo= __velo_2_idx__(x[3])
+        values= controller[idx_dist, idx_velo, :]
+        best_value_idx= np.argmin(values)
+        return __idx_2_action__(best_value_idx)
+    else:
+        return __idx_2_action__( np.random.randint(0,7) )
+
+def adjust_rl_controller(x, action, new_value, controller):
+    dist= x[0]-x[2]
+    idx_dist= __dist_2_idx__(dist, x[3])
+    idx_velo= __velo_2_idx__(x[3])
+    idx_action= __action_2_idx__(action)
+    old_value= controller[idx_dist, idx_velo, idx_action]
+    controller[idx_dist, idx_velo, idx_action]= 0.6*old_value + 0.4*new_value
+    return controller
 
 
 def create_dummy_controller():
@@ -253,7 +284,8 @@ def create_dummy_controller():
                      [ 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 2.5, 2.5, 2.5],  # a little behind
                      [ 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5]]) # far behind
 
-
+# ctrl= create_rl_controller()
+# adjust_rl_controller([0,0,0,0], -4.5, 1.0, ctrl)
 
 # %% 7) Testing a controller
 
